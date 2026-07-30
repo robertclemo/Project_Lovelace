@@ -33,6 +33,7 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.firestore.Query
+import com.roanokeresistance.lovelace.profile.UserProfileRepository
 import kotlinx.coroutines.launch
 
 private const val MESSAGES_COLLECTION = "messages"
@@ -55,11 +56,18 @@ private data class ChatMessage(
 fun ChatScreen() {
     val firestore = remember { FirebaseFirestore.getInstance() }
     val currentUser = FirebaseAuth.getInstance().currentUser
+    val profileRepository = remember { UserProfileRepository() }
     val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
 
     var messages by remember { mutableStateOf(listOf<ChatMessage>()) }
     var draft by remember { mutableStateOf("") }
+    var displayName by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(currentUser?.uid) {
+        val uid = currentUser?.uid ?: return@LaunchedEffect
+        displayName = profileRepository.getDisplayName(uid)
+    }
 
     DisposableEffect(Unit) {
         val registration: ListenerRegistration = firestore.collection(MESSAGES_COLLECTION)
@@ -130,12 +138,13 @@ fun ChatScreen() {
             IconButton(
                 onClick = {
                     val text = draft.trim()
-                    if (text.isEmpty() || currentUser == null) return@IconButton
+                    val name = displayName
+                    if (text.isEmpty() || currentUser == null || name == null) return@IconButton
                     draft = ""
                     scope.launch {
                         val data = hashMapOf(
                             "senderUid" to currentUser.uid,
-                            "senderName" to (currentUser.displayName ?: currentUser.email ?: "Agent"),
+                            "senderName" to name,
                             "text" to text,
                             "timestampMillis" to System.currentTimeMillis()
                         )

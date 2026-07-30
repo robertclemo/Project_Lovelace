@@ -11,10 +11,11 @@ import android.webkit.JavascriptInterface
 import android.webkit.WebChromeClient
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -28,10 +29,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.google.firebase.auth.FirebaseAuth
 import com.roanokeresistance.lovelace.BuildConfig
+import com.roanokeresistance.lovelace.profile.UserProfileRepository
 import com.roanokeresistance.lovelace.viewportsync.LeaderState
 import com.roanokeresistance.lovelace.viewportsync.Viewport
 import com.roanokeresistance.lovelace.viewportsync.ViewportSyncManager
@@ -121,14 +126,21 @@ fun MapScreen() {
     val context = LocalContext.current
     val currentUser = FirebaseAuth.getInstance().currentUser
     val viewportSync = remember { ViewportSyncManager() }
+    val profileRepository = remember { UserProfileRepository() }
 
     var leaderState by remember { mutableStateOf<LeaderState?>(null) }
     val isLeading = leaderState?.leaderUid == currentUser?.uid
     val isLeadingState = rememberUpdatedState(isLeading)
     var webView by remember { mutableStateOf<WebView?>(null) }
+    var displayName by remember { mutableStateOf<String?>(null) }
 
     if (BuildConfig.DEBUG) {
         WebView.setWebContentsDebuggingEnabled(true)
+    }
+
+    LaunchedEffect(currentUser?.uid) {
+        val uid = currentUser?.uid ?: return@LaunchedEffect
+        displayName = profileRepository.getDisplayName(uid)
     }
 
     LaunchedEffect(Unit) {
@@ -248,8 +260,10 @@ fun MapScreen() {
                 .align(Alignment.TopEnd)
                 .padding(top = 100.dp, end = 8.dp),
             onBecomeLeader = {
-                currentUser?.let { user ->
-                    viewportSync.becomeLeader(user.uid, user.displayName ?: user.email ?: "Agent")
+                val uid = currentUser?.uid
+                val name = displayName
+                if (uid != null && name != null) {
+                    viewportSync.becomeLeader(uid, name)
                 }
             },
             onStopLeading = { viewportSync.stopLeading() }
@@ -265,20 +279,24 @@ private fun LeaderControl(
     onBecomeLeader: () -> Unit,
     onStopLeading: () -> Unit
 ) {
+    val (containerColor, description) = when {
+        isLeading -> MaterialTheme.colorScheme.primary to "Leading — tap to stop"
+        leaderState != null -> MaterialTheme.colorScheme.secondaryContainer to
+            "Following ${leaderState.leaderName} — tap to take over"
+        else -> MaterialTheme.colorScheme.surface to "Become leader"
+    }
+
     Surface(
-        modifier = modifier,
+        modifier = modifier
+            .size(56.dp)
+            .semantics { contentDescription = description }
+            .clickable(onClick = if (isLeading) onStopLeading else onBecomeLeader),
         shape = MaterialTheme.shapes.medium,
         tonalElevation = 4.dp,
-        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)
+        color = containerColor
     ) {
-        Box(modifier = Modifier.padding(4.dp)) {
-            when {
-                isLeading -> Button(onClick = onStopLeading) { Text("Leading — tap to stop") }
-                leaderState != null -> Button(onClick = onBecomeLeader) {
-                    Text("Following ${leaderState.leaderName} — tap to take over")
-                }
-                else -> Button(onClick = onBecomeLeader) { Text("Become Leader") }
-            }
+        Box(contentAlignment = Alignment.Center) {
+            Text("👑", fontSize = 24.sp)
         }
     }
 }

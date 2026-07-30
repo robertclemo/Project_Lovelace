@@ -19,13 +19,16 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import com.google.firebase.auth.FirebaseAuth
 import com.roanokeresistance.lovelace.auth.AuthScreen
 import com.roanokeresistance.lovelace.chat.ChatScreen
 import com.roanokeresistance.lovelace.map.MapScreen
+import com.roanokeresistance.lovelace.profile.ChooseDisplayNameScreen
+import com.roanokeresistance.lovelace.profile.EntryGateScreen
 
 private object Routes {
+    const val ENTRY_GATE = "entry_gate"
     const val AUTH = "auth"
+    const val DISPLAY_NAME = "display_name"
     const val MAP = "map"
     const val CHAT = "chat"
 }
@@ -33,13 +36,38 @@ private object Routes {
 @Composable
 fun LovelaceApp() {
     val navController = rememberNavController()
-    val startDestination = if (FirebaseAuth.getInstance().currentUser != null) Routes.MAP else Routes.AUTH
 
-    NavHost(navController = navController, startDestination = startDestination) {
+    NavHost(navController = navController, startDestination = Routes.ENTRY_GATE) {
+        composable(Routes.ENTRY_GATE) {
+            EntryGateScreen(
+                onNeedsSignIn = {
+                    navController.navigate(Routes.AUTH) {
+                        popUpTo(Routes.ENTRY_GATE) { inclusive = true }
+                    }
+                },
+                onNeedsDisplayName = {
+                    navController.navigate(Routes.DISPLAY_NAME) {
+                        popUpTo(Routes.ENTRY_GATE) { inclusive = true }
+                    }
+                },
+                onReady = {
+                    navController.navigate(Routes.MAP) {
+                        popUpTo(Routes.ENTRY_GATE) { inclusive = true }
+                    }
+                }
+            )
+        }
         composable(Routes.AUTH) {
             AuthScreen(onSignedIn = {
-                navController.navigate(Routes.MAP) {
+                navController.navigate(Routes.ENTRY_GATE) {
                     popUpTo(Routes.AUTH) { inclusive = true }
+                }
+            })
+        }
+        composable(Routes.DISPLAY_NAME) {
+            ChooseDisplayNameScreen(onDone = {
+                navController.navigate(Routes.MAP) {
+                    popUpTo(Routes.DISPLAY_NAME) { inclusive = true }
                 }
             })
         }
