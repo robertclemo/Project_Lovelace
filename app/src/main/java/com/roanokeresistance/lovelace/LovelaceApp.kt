@@ -19,6 +19,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.google.firebase.auth.FirebaseAuth
 import com.roanokeresistance.lovelace.auth.AuthScreen
 import com.roanokeresistance.lovelace.chat.ChatScreen
 import com.roanokeresistance.lovelace.map.MapScreen
@@ -32,8 +33,9 @@ private object Routes {
 @Composable
 fun LovelaceApp() {
     val navController = rememberNavController()
+    val startDestination = if (FirebaseAuth.getInstance().currentUser != null) Routes.MAP else Routes.AUTH
 
-    NavHost(navController = navController, startDestination = Routes.AUTH) {
+    NavHost(navController = navController, startDestination = startDestination) {
         composable(Routes.AUTH) {
             AuthScreen(onSignedIn = {
                 navController.navigate(Routes.MAP) {
