@@ -18,9 +18,11 @@ class UserProfileRepository(
         return snapshot.getString("displayName")?.takeIf { it.isNotBlank() }
     }
 
-    suspend fun setDisplayName(uid: String, displayName: String) {
-        firestore.collection(USERS_COLLECTION).document(uid)
-            .set(mapOf("displayName" to displayName))
-            .await()
+    // Membership gate (§4 of the architecture doc): true only once the
+    // account has redeemed an invite code via InviteRepository — signing
+    // in with Google alone isn't enough to reach chat or the map.
+    suspend fun isApproved(uid: String): Boolean {
+        val snapshot = firestore.collection(USERS_COLLECTION).document(uid).get().await()
+        return snapshot.getBoolean("approved") == true
     }
 }

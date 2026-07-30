@@ -12,13 +12,13 @@ import com.google.firebase.auth.FirebaseAuth
 
 /**
  * One-time routing gate run at app launch and right after sign-in: decides
- * whether the user needs to sign in, pick an app-scoped display name
- * (§4 of the architecture doc), or can go straight to the map.
+ * whether the user needs to sign in, redeem an invite code (§4 of the
+ * architecture doc's admin-approval gate), or can go straight to the map.
  */
 @Composable
 fun EntryGateScreen(
     onNeedsSignIn: () -> Unit,
-    onNeedsDisplayName: () -> Unit,
+    onNeedsToJoin: () -> Unit,
     onReady: () -> Unit
 ) {
     val repository = remember { UserProfileRepository() }
@@ -29,10 +29,10 @@ fun EntryGateScreen(
             onNeedsSignIn()
             return@LaunchedEffect
         }
-        if (repository.getDisplayName(user.uid) == null) {
-            onNeedsDisplayName()
-        } else {
+        if (repository.isApproved(user.uid)) {
             onReady()
+        } else {
+            onNeedsToJoin()
         }
     }
 

@@ -22,13 +22,13 @@ import androidx.navigation.compose.rememberNavController
 import com.roanokeresistance.lovelace.auth.AuthScreen
 import com.roanokeresistance.lovelace.chat.ChatScreen
 import com.roanokeresistance.lovelace.map.MapScreen
-import com.roanokeresistance.lovelace.profile.ChooseDisplayNameScreen
 import com.roanokeresistance.lovelace.profile.EntryGateScreen
+import com.roanokeresistance.lovelace.profile.JoinScreen
 
 private object Routes {
     const val ENTRY_GATE = "entry_gate"
     const val AUTH = "auth"
-    const val DISPLAY_NAME = "display_name"
+    const val JOIN = "join"
     const val MAP = "map"
     const val CHAT = "chat"
 }
@@ -45,8 +45,8 @@ fun LovelaceApp() {
                         popUpTo(Routes.ENTRY_GATE) { inclusive = true }
                     }
                 },
-                onNeedsDisplayName = {
-                    navController.navigate(Routes.DISPLAY_NAME) {
+                onNeedsToJoin = {
+                    navController.navigate(Routes.JOIN) {
                         popUpTo(Routes.ENTRY_GATE) { inclusive = true }
                     }
                 },
@@ -64,10 +64,10 @@ fun LovelaceApp() {
                 }
             })
         }
-        composable(Routes.DISPLAY_NAME) {
-            ChooseDisplayNameScreen(onDone = {
+        composable(Routes.JOIN) {
+            JoinScreen(onJoined = {
                 navController.navigate(Routes.MAP) {
-                    popUpTo(Routes.DISPLAY_NAME) { inclusive = true }
+                    popUpTo(Routes.JOIN) { inclusive = true }
                 }
             })
         }

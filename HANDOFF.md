@@ -3,10 +3,12 @@
 ## TL;DR
 
 Re-verified auth, map, and chat still work live (unchanged from last
-session). Built and verified **viewport sync (leader-follow)** and
-**app-scoped display names** end-to-end, including several real bugs
-caught only by live testing on the emulator, not code review. Firestore
-rules had to be fixed/extended live in the Firebase console twice tonight.
+session). Built and verified **viewport sync (leader-follow)**,
+**app-scoped display names**, and the **invite-code admin-approval gate**
+end-to-end, including several real bugs caught only by live testing on
+the emulator, not code review. Firestore rules had to be fixed/extended
+live in the Firebase console three times tonight. Next: a real-device
+playtest with a friend using invite code `LOVELACE7`.
 
 ## What's working right now (verified)
 
@@ -34,21 +36,44 @@ rules had to be fixed/extended live in the Firebase console twice tonight.
     follower path (`setView`) works, not just the publish path.
 - **App-scoped display names**, §4 of the architecture doc:
   - `UserProfileRepository` (`profile/UserProfileRepository.kt`):
-    get/set a `displayName` on `users/{uid}` in Firestore.
-  - `EntryGateScreen`: new first-hit route after `LovelaceApp`'s NavHost
-    starts — checks auth state, then (if signed in) whether a profile
-    doc exists yet, and routes to sign-in / name-picker / map
-    accordingly. Runs again right after sign-in too.
-  - `ChooseDisplayNameScreen`: first-run prompt, pre-filled with the
-    Google account name as a *suggestion only* — the point is this name
-    is decoupled from the real identity, so it's freely editable.
-  - Chat and viewport-sync's leader claim both now resolve and use this
+    get a `displayName` and check `approved` status on `users/{uid}`.
+  - Chat and viewport-sync's leader claim both resolve and use this
     stored name instead of `currentUser.displayName`/`email`.
-  - Verified for real: fresh account with no `users/{uid}` doc got
-    prompted for a name on launch; picked something unrelated to the
-    Google name ("Agent_Falcon"); confirmed it showed up as the sender
-    on a new chat message *and* as `leaderName` on a claimed
-    `viewport_sync/current` doc.
+- **Invite-code admin-approval gate**, also §4 of the architecture doc —
+  built after display names, and folded into the same first-run screen:
+  - `InviteRepository` (`profile/InviteRepository.kt`): redeems a code
+    via an atomic Firestore transaction — checks `active` and
+    `usedCount < maxUses` on `invites/{code}`, then in the same
+    transaction increments `usedCount` and sets
+    `{displayName, approved: true, invitedByCode}` on `users/{uid}`.
+    Returns `SUCCESS` / `INVALID_CODE` / `CODE_EXHAUSTED`.
+  - `EntryGateScreen`: now checks `isApproved(uid)` (not just whether a
+    profile doc exists) to decide sign-in vs. join vs. map.
+  - `JoinScreen` (replaces the old `ChooseDisplayNameScreen`): one
+    first-run screen asking for both the invite code and a display name,
+    pre-filled with the Google name as a suggestion. This is the
+    single on-ramp now — there's no separate "pick a name" step anymore,
+    since redeeming a code and picking a name happen together.
+  - **Enforced server-side, not just in the UI.** `messages` and
+    `viewport_sync` reads/writes now require a Firestore rules function
+    `isApproved()` that checks `users/{uid}.approved == true` — an
+    unapproved account can sign in with Google but can't read or write
+    chat, map sync, or anything else until it redeems a code.
+  - Verified for real: a wrong code was rejected in the UI
+    ("That invite code isn't valid."); the real code (`LOVELACE7`) was
+    redeemed successfully, `invites/LOVELACE7.usedCount` went from 0 to
+    1, `users/{uid}` got `approved: true` + `displayName: "Agent_Falcon"`
+    + `invitedByCode: "LOVELACE7"`, and chat send/receive plus the map
+    both kept working immediately after.
+  - **Known, accepted gap**: the `users/{uid}` write rule only checks
+    `request.auth.uid == uid`, not that `approved: true` was set via a
+    real invite redemption — a user with Firestore SDK/REST knowledge
+    could self-approve directly, bypassing `InviteRepository` entirely.
+    Closing this fully would need a Cloud Function (server-side), which
+    the architecture doc's "no custom server needed initially" stance
+    argues against for now. Fine for keeping casual outsiders out of a
+    friend-group app; not meant to withstand a determined technical
+    attacker.
 
 ## Bugs found tonight (all via live testing, not code review)
 
@@ -88,15 +113,14 @@ bugs above and will keep being useful for IITC/JS debugging.
 
 ## Next up (pick one)
 
-1. **Signal Protocol E2E encryption for chat** — the deliberate follow-up
+1. **Real-device playtest** — a developer friend is testing tonight/soon.
+   Give them invite code `LOVELACE7` (10 uses, 1 already used by the
+   emulator test account). They'll need the debug APK sideloaded or a
+   `gradlew installDebug` over USB — see "Repo & environment reference"
+   below for the throwaway `debug-apk` branch if a cable isn't handy.
+2. **Signal Protocol E2E encryption for chat** — the deliberate follow-up
    to chat being plaintext. Architecture doc §5 covers sender-keys,
    on-device key storage, and §5a (key rotation on member removal).
-2. Real device retest of chat, viewport sync, and display names (all
-   only tested on emulator so far).
-3. Invite-code / admin-approval gate for new sign-ups (§4 of the
-   architecture doc mentions this alongside display names, but it's a
-   separate feature — not built yet, so right now any Google account can
-   sign in and pick a name).
 
 ## Known non-blocking issues
 
@@ -111,7 +135,8 @@ bugs above and will keep being useful for IITC/JS debugging.
   Google Sign-In needs it again.
 - The `debug-apk` branch (local + `origin`) is still sitting around,
   confirmed throwaway — safe to delete whenever, just hasn't been asked
-  for yet.
+  for yet. Could be handy tonight for the friend's phone test.
+- The `users/{uid}` approval-write gap noted above under invite codes.
 
 ## Repo & environment reference
 
@@ -125,15 +150,26 @@ bugs above and will keep being useful for IITC/JS debugging.
   - Auth: Google provider enabled, debug SHA-1 registered.
   - Firestore: Standard edition, `nam5` region. Rules (managed directly in
     the Firebase console — no `firestore.rules` file in this repo):
-    - `messages`: authenticated reads, writes must set `senderUid` to your
-      own uid, no update/delete.
-    - `viewport_sync`: authenticated read/write, no per-field restriction
-      (leadership hand-off means anyone can overwrite the current-leader
-      doc — see §6 of the architecture doc for why this is fine at this
-      trust level).
-    - `users`: authenticated read/write, but only your own doc
-      (`request.auth.uid == uid`) — this is where app-scoped display
-      names live.
+    - Top-level `isApproved()` function: true if
+      `users/{request.auth.uid}.approved == true`.
+    - `messages`: reads/creates require `isApproved()`; creates must also
+      set `senderUid` to your own uid; no update/delete.
+    - `viewport_sync`: read/write require `isApproved()`, no per-field
+      restriction beyond that (leadership hand-off means anyone approved
+      can overwrite the current-leader doc — see §6 of the architecture
+      doc for why this is fine at this trust level).
+    - `users`: read/write require `request.auth.uid == uid` — no
+      `isApproved()` gate here, since this is exactly the doc that grants
+      approval (see the known gap above).
+    - `invites`: authenticated read; update only allowed if the only
+      changed field is `usedCount` and it increments by exactly 1; no
+      client create/delete (codes are minted by hand in the console).
+  - **Invite codes** (collection `invites`, doc ID = the code itself):
+    fields `maxUses` (int64), `usedCount` (int64), `active` (boolean).
+    To mint a new one: Firestore console → Data → `invites` → Add
+    document, doc ID = your code text, those three fields.
+    - `LOVELACE7`: maxUses 10, usedCount 1 (used by the emulator test
+      account tonight), active.
 - **Package name**: `com.roanokeresistance.lovelace`
 - **Local paths**:
   - Project root: `C:\Users\rober\Documents\Ingress`
@@ -144,8 +180,8 @@ bugs above and will keep being useful for IITC/JS debugging.
   `Medium_Phone.avd`). **Leave `hw.gpu.mode=auto`** — switching it to
   `host` froze the entire emulator SystemUI on this machine.
   Test Google account already added to it: `bertramhiresmith@gmail.com`.
-  Its app-scoped display name is currently "Agent_Falcon" (picked during
-  tonight's testing).
+  Its app-scoped display name is "Agent_Falcon"; it's approved (redeemed
+  `LOVELACE7`).
 - **Architecture doc**: `ingress-team-app-architecture.md` at repo root.
 
 ## How to pick back up tomorrow
