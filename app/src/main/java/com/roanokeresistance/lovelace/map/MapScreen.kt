@@ -13,6 +13,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 
 private const val INTEL_URL = "https://intel.ingress.com/intel"
 private const val IITC_ASSET = "iitc_total_conversion.user.js"
+private const val ERROR_OVERLAY_ASSET = "error_overlay.js"
 
 /**
  * WebView loading the live intel map (§3 of the architecture doc), with
@@ -56,6 +57,10 @@ fun MapScreen() {
             webView.webViewClient = object : WebViewClient() {
                 override fun onPageFinished(view: WebView, url: String?) {
                     super.onPageFinished(view, url)
+                    val errorOverlay = context.assets.open(ERROR_OVERLAY_ASSET)
+                        .bufferedReader()
+                        .use { it.readText() }
+                    view.evaluateJavascript(errorOverlay, null)
                     val iitcScript = context.assets.open(IITC_ASSET)
                         .bufferedReader()
                         .use { it.readText() }
