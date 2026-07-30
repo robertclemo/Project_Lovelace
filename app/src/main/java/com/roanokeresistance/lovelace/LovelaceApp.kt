@@ -3,7 +3,7 @@ package com.roanokeresistance.lovelace
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Chat
+import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
@@ -63,7 +63,7 @@ private fun HomeShell(navController: androidx.navigation.NavHostController, star
                 NavigationBarItem(
                     selected = currentDestination?.hierarchy?.any { it.route == Routes.CHAT } == true,
                     onClick = { navController.navigateSingleTopTo(Routes.CHAT) },
-                    icon = { Icon(Icons.Filled.Chat, contentDescription = "Chat") },
+                    icon = { Icon(Icons.AutoMirrored.Filled.Chat, contentDescription = "Chat") },
                     label = { Text("Chat") }
                 )
             }
