@@ -1,0 +1,14 @@
+*.iml
+.gradle/
+.idea/
+local.properties
+.DS_Store
+build/
+captures/
+.externalNativeBuild/
+.cxx/
+*.apk
+*.aab
+
+# Firebase config — never commit, provide per-developer/CI
+app/google-services.json

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- key bow (ring) -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#2F80FF"
+        android:strokeWidth="7"
+        android:pathData="M38,54 m-13,0 a13,13 0 1,0 26,0 a13,13 0 1,0 -26,0" />
+    <!-- key shaft -->
+    <path
+        android:fillColor="#2F80FF"
+        android:pathData="M51,50 L80,50 L80,58 L51,58 Z" />
+    <!-- key teeth -->
+    <path
+        android:fillColor="#2F80FF"
+        android:pathData="M66,58 L71,58 L71,66 L66,66 Z" />
+    <path
+        android:fillColor="#2F80FF"
+        android:pathData="M74,58 L79,58 L79,64 L74,64 Z" />
+</vector>
