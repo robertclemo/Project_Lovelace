@@ -45,6 +45,22 @@
     var text = reason && reason.message ? reason.message : String(reason);
     log('UNHANDLED REJECTION: ' + text);
   });
+  // CSP and Trusted Types violations don't throw or fire 'error' — they're
+  // silently blocked and only reported through this event (or the console).
+  window.addEventListener('securitypolicyviolation', function (e) {
+    log('CSP VIOLATION: blocked-uri=' + e.blockedURI + ' directive=' + e.violatedDirective + ' source=' + e.sourceFile + ':' + e.lineNumber);
+  });
+
+  var origConsoleError = console.error;
+  console.error = function () {
+    log('console.error: ' + Array.prototype.slice.call(arguments).join(' '));
+    origConsoleError.apply(console, arguments);
+  };
+  var origConsoleWarn = console.warn;
+  console.warn = function () {
+    log('console.warn: ' + Array.prototype.slice.call(arguments).join(' '));
+    origConsoleWarn.apply(console, arguments);
+  };
 
   log('Lovelace error overlay active');
 })();
