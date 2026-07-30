@@ -12,14 +12,17 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
 
 private const val INTEL_URL = "https://intel.ingress.com/intel"
-private const val BOOTSTRAP_ASSET = "iitc_bootstrap.js"
+private const val IITC_ASSET = "iitc_total_conversion.user.js"
 
 /**
- * WebView loading the live intel map (§3 of the architecture doc). The
- * player signs into Ingress/Google normally inside this WebView, same as
- * a desktop browser — nothing here intercepts or stores those
- * credentials; cookies are only enabled so the login session persists
- * across app restarts, exactly like a normal browser tab would.
+ * WebView loading the live intel map (§3 of the architecture doc), with
+ * the IITC-CE core script (built from source via their build.py — see
+ * THIRD_PARTY_NOTICES_IITC-CE_LICENSE.txt at the repo root) injected once
+ * the page finishes loading. The player signs into Ingress/Google
+ * normally inside this WebView, same as a desktop browser — nothing here
+ * intercepts or stores those credentials; cookies are only enabled so the
+ * login session persists across app restarts, exactly like a normal
+ * browser tab would. IITC plugins aren't bundled yet — this is core-only.
  */
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
@@ -53,10 +56,10 @@ fun MapScreen() {
             webView.webViewClient = object : WebViewClient() {
                 override fun onPageFinished(view: WebView, url: String?) {
                     super.onPageFinished(view, url)
-                    val bootstrap = context.assets.open(BOOTSTRAP_ASSET)
+                    val iitcScript = context.assets.open(IITC_ASSET)
                         .bufferedReader()
                         .use { it.readText() }
-                    view.evaluateJavascript(bootstrap, null)
+                    view.evaluateJavascript(iitcScript, null)
                 }
             }
 
