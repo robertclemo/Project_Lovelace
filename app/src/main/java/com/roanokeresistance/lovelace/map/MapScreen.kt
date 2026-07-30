@@ -60,6 +60,10 @@ fun MapScreen() {
                         .bufferedReader()
                         .use { it.readText() }
                     view.evaluateJavascript(iitcScript, null)
+                    // The Ingress login sets its session cookie mid-page-load;
+                    // flush explicitly so it survives a WebView/process restart
+                    // instead of relying on the OS to persist it eventually.
+                    CookieManager.getInstance().flush()
                 }
             }
 
