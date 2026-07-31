@@ -153,9 +153,8 @@ Feature is done: built, live-tested, committed.
   at the rules layer — closing that fully needs a Cloud Function, which
   is more than this app needs yet. Documented, not fixed.
 - **Debug APK for sideloading** — `debug-apk` branch,
-  `build-artifacts/lovelace-debug.apk`, updated tonight with everything
-  through the invite-code gate (predates the plugin work above, so it's
-  one step behind currently).
+  `build-artifacts/lovelace-debug.apk`. Up to date: merged `main` in
+  and rebuilt after the IITC plugin work above, pushed as `9328a7c`.
 - Three real bugs found via live device/emulator testing (not code
   review) during viewport sync work — Firestore rules nesting mistake,
   `window.map` readiness check, a recursive self-call in
@@ -201,7 +200,7 @@ the newer bundled JBR 25 wouldn't have worked even if it weren't broken.
 
 - **GitHub**: `https://github.com/robertclemo/Project_Lovelace` (private)
   - `main` — everything in "Previously completed" above, pushed.
-  - `debug-apk` — sideload APK branch, one step behind main currently.
+  - `debug-apk` — sideload APK branch, up to date with `main`.
 - **Firebase project**: "Roanoke Resistance Lovelace"
   (`roanoke-resistance-lovelace`), Spark (free) plan. Firestore rules
   managed directly in console (no `firestore.rules` file in repo) —
