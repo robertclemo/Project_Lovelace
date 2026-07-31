@@ -22,6 +22,7 @@ import androidx.navigation.compose.rememberNavController
 import com.roanokeresistance.lovelace.auth.AuthScreen
 import com.roanokeresistance.lovelace.chat.ChatScreen
 import com.roanokeresistance.lovelace.map.MapScreen
+import com.roanokeresistance.lovelace.plugins.PluginsScreen
 import com.roanokeresistance.lovelace.profile.EntryGateScreen
 import com.roanokeresistance.lovelace.profile.JoinScreen
 
@@ -31,6 +32,7 @@ private object Routes {
     const val JOIN = "join"
     const val MAP = "map"
     const val CHAT = "chat"
+    const val PLUGINS = "plugins"
 }
 
 @Composable
@@ -73,6 +75,13 @@ fun LovelaceApp() {
         }
         composable(Routes.MAP) { HomeShell(navController, startTab = Routes.MAP) }
         composable(Routes.CHAT) { HomeShell(navController, startTab = Routes.CHAT) }
+        composable(Routes.PLUGINS) {
+            PluginsScreen(onReload = {
+                navController.navigate(Routes.MAP) {
+                    popUpTo(Routes.MAP) { inclusive = true }
+                }
+            })
+        }
     }
 }
 
@@ -102,7 +111,7 @@ private fun HomeShell(navController: androidx.navigation.NavHostController, star
         Box(modifier = Modifier.padding(padding)) {
             when (startTab) {
                 Routes.CHAT -> ChatScreen()
-                else -> MapScreen()
+                else -> MapScreen(onOpenPlugins = { navController.navigate(Routes.PLUGINS) })
             }
         }
     }
