@@ -36,6 +36,10 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.google.firebase.auth.FirebaseAuth
 import com.roanokeresistance.lovelace.BuildConfig
+import com.roanokeresistance.lovelace.plugins.IITC_PLUGIN_CATALOG
+import com.roanokeresistance.lovelace.plugins.PluginPreferencesRepository
+import com.roanokeresistance.lovelace.plugins.wrapPluginScript
+import com.roanokeresistance.lovelace.plugins.wrapPluginStyle
 import com.roanokeresistance.lovelace.profile.UserProfileRepository
 import com.roanokeresistance.lovelace.viewportsync.LeaderState
 import com.roanokeresistance.lovelace.viewportsync.Viewport
@@ -118,21 +122,25 @@ private fun WebView.applyBaseSettings() {
  * normally inside this WebView, same as a desktop browser — nothing here
  * intercepts or stores those credentials; cookies are only enabled so the
  * login session persists across app restarts, exactly like a normal
- * browser tab would. IITC plugins aren't bundled yet — this is core-only.
+ * browser tab would. IITC plugins (§3 of the architecture doc) are
+ * vendored as raw source and injected after core for whichever ones the
+ * user has enabled — see [com.roanokeresistance.lovelace.plugins.PluginsScreen].
  */
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
-fun MapScreen() {
+fun MapScreen(onOpenPlugins: () -> Unit = {}) {
     val context = LocalContext.current
     val currentUser = FirebaseAuth.getInstance().currentUser
     val viewportSync = remember { ViewportSyncManager() }
     val profileRepository = remember { UserProfileRepository() }
+    val pluginPreferencesRepository = remember { PluginPreferencesRepository() }
 
     var leaderState by remember { mutableStateOf<LeaderState?>(null) }
     val isLeading = leaderState?.leaderUid == currentUser?.uid
     val isLeadingState = rememberUpdatedState(isLeading)
     var webView by remember { mutableStateOf<WebView?>(null) }
     var displayName by remember { mutableStateOf<String?>(null) }
+    val enabledPluginIds = remember { mutableStateOf<Set<String>>(emptySet()) }
 
     if (BuildConfig.DEBUG) {
         WebView.setWebContentsDebuggingEnabled(true)
@@ -141,6 +149,7 @@ fun MapScreen() {
     LaunchedEffect(currentUser?.uid) {
         val uid = currentUser?.uid ?: return@LaunchedEffect
         displayName = profileRepository.getDisplayName(uid)
+        enabledPluginIds.value = pluginPreferencesRepository.getEnabledPluginIds(uid)
     }
 
     LaunchedEffect(Unit) {
@@ -187,6 +196,16 @@ fun MapScreen() {
                             .use { it.readText() }
                         view.evaluateJavascript(patchIitcScript(iitcScript), null)
                         view.evaluateJavascript(VIEWPORT_HOOK_SCRIPT, null)
+                        IITC_PLUGIN_CATALOG.filter { it.id in enabledPluginIds.value }.forEach { plugin ->
+                            val rawPluginScript = context.assets.open(plugin.scriptAsset)
+                                .bufferedReader()
+                                .use { it.readText() }
+                            view.evaluateJavascript(wrapPluginScript(rawPluginScript), null)
+                            plugin.styleAsset?.let { styleAsset ->
+                                val css = context.assets.open(styleAsset).bufferedReader().use { it.readText() }
+                                view.evaluateJavascript(wrapPluginStyle(css), null)
+                            }
+                        }
                         // The Ingress login sets its session cookie mid-page-load;
                         // flush explicitly so it survives a WebView/process restart
                         // instead of relying on the OS to persist it eventually.
@@ -268,6 +287,30 @@ fun MapScreen() {
             },
             onStopLeading = { viewportSync.stopLeading() }
         )
+
+        PluginsButton(
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(top = 164.dp, end = 8.dp),
+            onClick = onOpenPlugins
+        )
+    }
+}
+
+@Composable
+private fun PluginsButton(modifier: Modifier = Modifier, onClick: () -> Unit) {
+    Surface(
+        modifier = modifier
+            .size(56.dp)
+            .semantics { contentDescription = "IITC plugins" }
+            .clickable(onClick = onClick),
+        shape = MaterialTheme.shapes.medium,
+        tonalElevation = 4.dp,
+        color = MaterialTheme.colorScheme.surface
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Text("🧩", fontSize = 24.sp)
+        }
     }
 }
 
