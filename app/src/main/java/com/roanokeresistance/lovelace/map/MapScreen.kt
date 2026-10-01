@@ -45,7 +45,10 @@ import com.roanokeresistance.lovelace.viewportsync.LeaderState
 import com.roanokeresistance.lovelace.viewportsync.Viewport
 import com.roanokeresistance.lovelace.viewportsync.ViewportSyncManager
 
-private const val INTEL_URL = "https://intel.ingress.com/intel"
+// Opens centered on downtown Roanoke, VA. IITC's getPosition() reads ll/z from
+// the URL before falling back to the last-viewed position cookie, so every
+// launch starts here. Zoom 15 is the lowest zoom at which Intel shows all portals.
+private const val INTEL_URL = "https://intel.ingress.com/intel?ll=37.2710,-79.9414&z=15"
 private const val IITC_ASSET = "iitc_total_conversion.user.js"
 
 // IITC-CE's build wraps the script as `function wrapper(plugin_info) {...}`
